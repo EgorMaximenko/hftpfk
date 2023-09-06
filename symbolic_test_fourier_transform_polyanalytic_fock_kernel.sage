@@ -1,5 +1,6 @@
 # Here we test the formula "(Fourier \otimes Identity) K = L" from the paper
-# Horizontal Fourier transform of the reproducing kernel of the polyanalytic Bargmann--Segal--Fock space
+# Horizontal Fourier transform of the reproducing kernel of the polyanalytic Fock space,
+# by Erick Lee-Guzm\'an, Egor A. Maximenko, Gerardo Ramos-Vazquez, Armando S\'anchez-Nungaray
 
 
 def lists_with_bounded_sum(n, s):
@@ -60,7 +61,7 @@ def difvec(a, b):
 def mykernel(m, u, y, v):
     # flattened poly-Fock kernel, space Hm from our article
     n = len(u)
-    coef = (2 / pi) ** (n / 2)
+    coef = 2 ** n
     v_minus_y = difvec(v, y)
     v_plus_y = sumvec(v, y)
     u_norm2 = mynorm(u)
@@ -82,7 +83,7 @@ def fourier_mykernel(m, xi, u, y, v):
         old_result = result
         result = integral(old_result, u[j], -Infinity, Infinity)
     result = ((2 * pi) ** (- n / 2)) * result
-    return result
+    return result.full_simplify()
 
 
 def hermite_function(n, t):
@@ -94,7 +95,7 @@ def hermite_function(n, t):
 
 def q_factor(k, xi, v):
     n = len(xi)
-    coef = 2 ** (n / 4)
+    coef = (2 ** (n / 2)) * (pi ** (n / 4))
     return coef * prod([hermite_function(k[j], (xi[j] + 2 * v[j]) / sqrt(2)) for j in range(n)])
 
 
@@ -104,15 +105,13 @@ def L_formula(m, xi, u, y, v):
     result = 0
     for k in ks:
         result += q_factor(k, xi, y) * q_factor(k, xi, v)
-    return result
+    return result.full_simplify()
 
 
 def test_fourier_mykernel(n, m, verbose):
     u, y, v, xi = myvars(n)
     L0 = fourier_mykernel(m, xi, u, y, v)
-    L0 = L0.full_simplify()
     L1 = L_formula(m, xi, u, y, v)
-    L1 = L1.full_simplify()
     er = L0 - L1
     er = er.full_simplify()
     result = bool(er.is_zero())
@@ -127,6 +126,8 @@ def test_fourier_mykernel(n, m, verbose):
 def small_test():
     nmax = 2
     mmax = 2
+    print('symbolic test Fourier transform of polyanalytic Fock kernel')
+    print('small test with nmax = %d and mmax = %d\n' % (nmax, mmax))
     verbose = 2
     samples = [(n, m) for n in range(1, nmax + 1) for m in range(1, mmax + 1)]
     result = True
@@ -139,6 +140,7 @@ def small_test():
 def big_test():
     nmax = 4
     mmax = 4
+    print('symbolic test Fourier transform of polyanalytic Fock kernel')
     print('big test with nmax = %d and mmax = %d\n' % (nmax, mmax))
     verbose = 1
     samples = [(n, m) for n in range(1, nmax + 1) for m in range(1, mmax + 1)]
@@ -149,7 +151,9 @@ def big_test():
     return result
 
 
-test_fourier_mykernel(2, 2, 2)
-print('')
+#test_fourier_mykernel(2, 2, 2)
+#print('')
+#print(small_test())
+#
 print(big_test())
 
