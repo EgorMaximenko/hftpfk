@@ -1,3 +1,6 @@
 This project contains some tests (in Sagemath) of the paper
 "Horizontal Fourier transform of the polyanalytic Fock kernel"
 by Erick Lee-Guzmán, Egor A. Maximenko, Gerardo Ramos-Vazquez, and Armando Sánchez-Nungaray.
+
+This is a copy of the previous project, whose name was too large.
+https://github.com/EgorMaximenko/horizontal-fourier-transform-of-polyanalytic-fock-kernel
