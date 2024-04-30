@@ -1,4 +1,4 @@
-# Here we test the formula for R_{\cF_m} K_{(x + iy) / sqrt{a}} from our paper
+# Here we test the formula for R_{\cH_m} K_{x + iy} from our paper
 # Horizontal Fourier transform of the reproducing Fock kernel,
 # by Erick Lee-Guzm\'an, Egor A. Maximenko, Gerardo Ramos-Vazquez, Armando S\'anchez-Nungaray
 
@@ -21,14 +21,13 @@ def myvars(letter, m):
     return var([letter + str(j) for j in range(m)])
 
 
-def vars_aluvxyxi(n):
-    al = var('al')
+def vars_uvxyxi(n):
     u = myvars('u', n)
     v = myvars('v', n)
     x = myvars('x', n)
     y = myvars('y', n)
     xi = myvars('xi', n)
-    return al, u, v, x, y, xi
+    return u, v, x, y, xi
 
 
 def my_binomial(a, m):
@@ -118,13 +117,32 @@ def dif_vec(a, b):
     return list([a[j] - b[j] for j in range(len(a))])
 
 
-def kernel_poly_fock(m, w, z, alpha):
-    n = len(z)
-    CurrentRing = parent(z[0])
-    factor0 = exp(alpha * complex_dot_product(w, z))
-    diff0 = dif_vec(w, z)
-    factor1 = laguerre_pol(m - 1, n, alpha * complex_norm2(diff0))
-    result = CurrentRing(factor0 * factor1)
+def kernel_space_h(m, u, v, x, y):
+    n = len(u)
+    CurrentRing = parent(u[0])
+    u_minus_x = dif_vec(u, x)
+    v_minus_y = dif_vec(v, y)
+    v_plus_y = sum_vec(v, y)
+    term0 = real_norm2(u_minus_x) + real_norm2(v_minus_y)
+    term1 = real_dot_product(u_minus_x, v_plus_y)
+    factor0 = 2 ** n
+    factor1 = exp((- 1 / 2) * term0 - I * term1)
+    factor2 = laguerre_pol(m - 1, n, term0)
+    result = CurrentRing(factor0 * factor1 * factor2)
+    result = result.full_simplify()
+    return result
+
+
+def kernel_space_h_example(m, u, v, x, y):
+    n = len(u)
+    CurrentRing = parent(u[0])
+    factor0 = 2 ** (- n / 2)
+    x2 = real_norm2(x)
+    y2 = real_norm2(y)
+    xy = real_dot_product(x, y)
+    factor1 = exp((1 / 2) * (x2 + y2) - I * xy)
+    factor2 = kernel_space_h(m, u, v, x, y)
+    result = CurrentRing(factor0 * factor1 * factor2)
     result = result.full_simplify()
     return result
 
@@ -148,19 +166,13 @@ def q(k, xi, v):
     return result
 
 
-def operator_rf(n, m, f):
-    # operator R_F from the article
-    # f must be a function
-    al, u, v, x, y, xi = vars_aluvxyxi(n)
-    assume(al > 0)
-    w = [u[j] + I * v[j] for j in range(n)]
-    argument_of_f = product_scalar_by_vec(1 / sqrt(al), w)
-    factor0 = f(argument_of_f)
-    u2 = real_norm2(u)
-    v2 = real_norm2(v)
-    v_plus_xi = sum_vec(v, xi)
-    u_by_v_plus_xi = real_dot_product(u, v_plus_xi)
-    factor1 = exp(- (u2 / 2) - (v2 / 2) - I * u_by_v_plus_xi)
+def operator_rh(n, m, g):
+    # operator R^H from the article
+    # g must be a function
+    u, v, x, y, xi = vars_uvxyxi(n)
+    u_xi = real_dot_product(u, xi)
+    factor0 = exp(- I * u_xi)
+    factor1 = g(u, v)
     J = list_of_multiindices(n, m)
     d = len(J)
     result = vector(SR, d)
@@ -170,35 +182,26 @@ def operator_rf(n, m, f):
         g = factor0 * factor1 * factor2
         g = g.full_simplify()
         for r in range(n):
-            g = g.full_simplify()
             g = g.expand()
             gprev = g
             g = integral(gprev, u[r], -Infinity, Infinity, algorithm='giac')
-            g = g.full_simplify()
             g = g.expand()
             gprev = g
             g = integral(gprev, v[r], -Infinity, Infinity, algorithm='giac')
-        coef0 = 2 ** (n / 2)
-        coef1 = (2 * pi) ** (- n)
-        g = coef0 * coef1 * g
+        coef = ((2 * pi) ** (-n))
+        g = coef * g
         g = g.full_simplify()
         result[j] = g
     return result
 
 
-def operator_rf_explicit(n, m, f):
-    # operator R_F from the article, in a more explicit form
-    # f must be a function
-    al, u, v, x, y, xi = vars_aluvxyxi(n)
-    assume(al > 0)
-    w = [u[j] + I * v[j] for j in range(n)]
-    argument_of_f = product_scalar_by_vec(1 / sqrt(al), w)
-    factor0 = f(argument_of_f)
-    u2 = real_norm2(u)
-    v2 = real_norm2(v)
-    v_plus_xi = sum_vec(v, xi)
-    u_by_v_plus_xi = real_dot_product(u, v_plus_xi)
-    factor1 = exp(- (u2 / 2) - (v2 / 2) - I * u_by_v_plus_xi)
+def operator_rh_explicit(n, m, g):
+    # operator R^H from the article, in a more explicit form
+    # g must be a function
+    u, v, x, y, xi = vars_uvxyxi(n)
+    u_xi = real_dot_product(u, xi)
+    factor0 = exp(- I * u_xi)
+    factor1 = g(u, v)
     J = list_of_multiindices(n, m)
     d = len(J)
     result = vector(SR, d)
@@ -211,44 +214,36 @@ def operator_rf_explicit(n, m, f):
         g = factor0 * factor1 * factor2
         g = g.full_simplify()
         for r in range(n):
-            g = g.full_simplify()
             g = g.expand()
             gprev = g
             g = integral(gprev, u[r], -Infinity, Infinity, algorithm='giac')
-            g = g.full_simplify()
             g = g.expand()
             gprev = g
             g = integral(gprev, v[r], -Infinity, Infinity, algorithm='giac')
-        coef = (pi ** (- 3 * n / 4))
+        coef = (2 ** (- n / 2)) * (pi ** (- 3 * n / 4))
         g = coef * g
         g = g.full_simplify()
         result[j] = g
     return result
 
 
-def operator_rf_applied_to_kernel(n, m):
-    # we use the point (x + i y) / sqrt{\al}
-    al, u, v, x, y, xi = vars_aluvxyxi(n)
-    assume(al > 0)
-    z = [(x[j] + I * y[j]) / sqrt(al) for j in range(n)]
-    f = lambda argf : kernel_poly_fock(m, argf, z, al)
-    result = operator_rf(n, m, f)
+def operator_rh_applied_to_kernel(n, m):
+    u, v, x, y, xi = vars_uvxyxi(n)
+    f = lambda s, t: kernel_space_h_example(m, s, t, x, y)
+    result = operator_rh(n, m, f)
     return result
 
 
-def operator_rf_explicit_applied_to_kernel(n, m):
-    # we use the point (x + i y) / sqrt{\al}
-    al, u, v, x, y, xi = vars_aluvxyxi(n)
-    assume(al > 0)
-    z = [(x[j] + I * y[j]) / sqrt(al) for j in range(n)]
-    f = lambda argf : kernel_poly_fock(m, argf, z, al)
-    result = operator_rf_explicit(n, m, f)
+def operator_rh_explicit_applied_to_kernel(n, m):
+    u, v, x, y, xi = vars_uvxyxi(n)
+    f = lambda s, t: kernel_space_h_example(m, s, t, x, y)
+    result = operator_rh_explicit(n, m, f)
     return result
 
 
 def example_vector_function_expr(n, m):
     # x, y are parameters, xi is a variable
-    al, u, v, x, y, xi = vars_aluvxyxi(n)
+    u, v, x, y, xi = vars_uvxyxi(n)
     x2 = real_norm2(x)
     y2 = real_norm2(y)
     y_plus_xi = sum_vec(y, xi)
@@ -276,20 +271,20 @@ def symbolic_vectors_are_equal(vector0, vector1):
     return result
 
 
-def test_operator_rf_applied_to_kernel(n, m, verbose_level):
+def test_operator_rh_applied_to_kernel(n, m, verbose_level):
     if verbose_level >= 1:
-        print('test_operator_rf_applied_to_kernel')
+        print('test_operator_rh_applied_to_kernel')
         print('n = ' + str(n) + ', m = ' + str(m))
-    result0 = operator_rf_applied_to_kernel(n, m)
-    result1 = operator_rf_explicit_applied_to_kernel(n, m)
+    result0 = operator_rh_applied_to_kernel(n, m)
+    result1 = operator_rh_explicit_applied_to_kernel(n, m)
     result2 = example_vector_function_expr(n, m)
     is_correct0 = symbolic_vectors_are_equal(result0, result2)
     is_correct1 = symbolic_vectors_are_equal(result1, result2)
     is_correct = is_correct0 and is_correct1
     if verbose_level >= 2:
-        print('result using RF:')
+        print('result using RH:')
         print(result0, '\n')
-        print('result using RF in a more explicit form:')
+        print('result using RH in a more explicit form:')
         print(result1, '\n')
         print('result that we have written in the example:')
         print(result2, '\n')
@@ -298,22 +293,21 @@ def test_operator_rf_applied_to_kernel(n, m, verbose_level):
     return is_correct
 
 
-def big_test_operator_rf_applied_to_kernel(nmax, mmax, verbose_level):
+def big_test_operator_rh_applied_to_kernel(nmax, mmax, verbose_level):
     if verbose_level >= 1:
-        print('big_test_operator_rf_applied_to_kernel')
+        print('big_test_operator_rh_applied_to_kernel')
         print('nmax = ' + str(nmax) + ', mmax = ' + str(mmax) + '\n')
     big_result = True
     for n in range(1, nmax + 1):
         for m in range(1, mmax + 1):
-            r = test_operator_rf_applied_to_kernel(n, m, verbose_level)
+            r = test_operator_rh_applied_to_kernel(n, m, verbose_level)
             big_result = big_result and r
     if verbose_level >= 1:
         print('big_result = ' + str(big_result))
     return big_result
 
 
-print(test_operator_rf_applied_to_kernel(1, 1, 2))
+print(test_operator_rh_applied_to_kernel(1, 1, 2))
 
-print(big_test_operator_rf_applied_to_kernel(2, 2, 1))
-
+print(big_test_operator_rh_applied_to_kernel(3, 3, 1))
 
